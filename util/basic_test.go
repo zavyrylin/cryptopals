@@ -1,6 +1,7 @@
 package util
 
 import (
+	"bytes"
 	"testing"
 )
 
@@ -15,9 +16,15 @@ var base64Cases = []struct {
 
 func TestBase64(t *testing.T) {
 	for _, test := range base64Cases {
-		res := HexToBase64(test.in)
-		if res != test.out {
-			t.Errorf("HexToBase64(%q) = %q, want %q", test.in, res, test.out)
+		input := []byte(test.in)
+		ret := HexToBase64(input)
+		expected := []byte(test.out)
+		if false == bytes.Equal(expected, ret) {
+			t.Errorf(
+				"HexToBase64(%q) = %q, want %q",
+				string(test.in),
+				string(ret),
+				test.out)
 		}
 	}
 }

@@ -5,12 +5,11 @@ import (
 	hex "encoding/hex"
 )
 
-func HexToBase64(src []byte) []byte {
+func HexToBase64(src []byte) ([]byte, error) {
 	// un-hex
 	dst1 := make([]byte, hex.DecodedLen(len(src)))
-	_, err := hex.Decode(dst1, src)
-	if err != nil {
-		panic(err)
+	if _, err := hex.Decode(dst1, src); err != nil {
+		return nil, err
 	}
 
 	// base64
@@ -18,5 +17,5 @@ func HexToBase64(src []byte) []byte {
 	dst2 := make([]byte, e.EncodedLen(len(dst1)))
 	e.Encode(dst2, dst1)
 
-	return dst2
+	return dst2, nil
 }

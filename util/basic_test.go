@@ -16,15 +16,15 @@ var base64Cases = []struct {
 
 func TestBase64(t *testing.T) {
 	for _, test := range base64Cases {
-		input := []byte(test.in)
-		ret := HexToBase64(input)
-		expected := []byte(test.out)
-		if false == bytes.Equal(expected, ret) {
-			t.Errorf(
-				"HexToBase64(%q) = %q, want %q",
-				string(test.in),
-				string(ret),
-				test.out)
+		got, err := HexToBase64([]byte(test.in))
+
+		if err != nil {
+			t.Errorf("HexToBase64(%q) -> err = %q", test.in, err)
+			continue
+		}
+
+		if bytes.Equal(got, []byte(test.out)) == false {
+			t.Errorf("HexToBase64(%q) = %q, want %q", test.in, string(got), test.out)
 		}
 	}
 }

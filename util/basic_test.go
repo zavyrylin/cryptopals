@@ -61,3 +61,23 @@ func TestXorString(t *testing.T) {
 		}
 	}
 }
+
+var xorStringTests = []struct {
+	in  string
+	r   rune
+	out string
+}{
+	{"", 'a', ""},
+	{"abcd", 'a', "\x00\x03\x02\x05"},
+	{"abcd", 'x', "\x19\x1a\x1b\x1c"},
+}
+
+func TestXorStringAgainstRune(t *testing.T) {
+	for _, test := range xorStringTests {
+		ret := XorStringAgainstRune(test.in, test.r)
+		if ret != test.out {
+			t.Errorf("XorStringAgainstRune(%q, %q) = %q, want %q",
+				test.in, test.r, ret, test.out)
+		}
+	}
+}

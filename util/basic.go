@@ -4,7 +4,10 @@ import (
 	enc "encoding/base64"
 	hex "encoding/hex"
 	"errors"
+//	utf "unicode/utf8"
 )
+
+// general functions
 
 func unhex(xs []byte) ([]byte, error) {
 	dst := make([]byte, hex.DecodedLen(len(xs)))
@@ -21,7 +24,20 @@ func base64(xs []byte) []byte {
 	return dst
 }
 
+func xor(xs, ys []byte) ([]byte, error) {
+	xlen := len(xs)
+	if xlen != len(ys) {
+		return nil, errors.New("input arrays' lengths are not equal")
+	}
+	ret := make([]byte, xlen)
+	for i, x := range xs {
+		ret[i] = x ^ ys[i]
+	}
+	return ret, nil
+}
+
 // s01ch01
+
 func HexToBase64(src []byte) ([]byte, error) {
 	dst1, err := unhex(src)
 	if err != nil {
@@ -35,19 +51,8 @@ func HexToBase64String(s string) (string, error) {
 	return string(ret), err
 }
 
-func xor(xs, ys []byte) ([]byte, error) {
-	xlen := len(xs)
-	if xlen != len(ys) {
-		return nil, errors.New("input arrays' lengths are not equal")
-	}
-	ret := make([]byte, xlen)
-	for i, x := range xs {
-		ret[i] = x ^ ys[i]
-	}
-	return ret, nil
-}
-
 // s01ch02
+
 func XorString(s1, s2 string) (string, error) {
 	var xs, ys []byte
 	var err error
@@ -62,4 +67,19 @@ func XorString(s1, s2 string) (string, error) {
 		return "", err
 	}
 	return hex.EncodeToString(zs), nil
+}
+
+// s01ch03
+
+func xorRunesAgainstRune(rs []rune, r rune) []rune {
+	for i, r0 := range rs {
+		rs[i] = r0 ^ r
+	}
+	return rs
+}
+
+func XorStringAgainstRune(s string, r rune) string {
+	rs := []rune(s)
+	ret := xorRunesAgainstRune(rs, r)
+	return string(ret)
 }

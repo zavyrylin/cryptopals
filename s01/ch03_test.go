@@ -1,6 +1,8 @@
-package util
+package s01
 
-import "testing"
+import (
+	"testing"
+)
 
 func TestEnglishScore(t *testing.T) {
 	tests := []struct {

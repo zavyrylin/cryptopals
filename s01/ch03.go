@@ -1,11 +1,12 @@
-package util
+package s01
 
 import (
 	"math"
 	"unicode"
 )
 
-// see https://en.wikipedia.org/wiki/Letter_frequency#Relative_frequencies_of_letters_in_the_English_language
+// Frequency values are taken from
+// https://en.wikipedia.org/wiki/Letter_frequency#Relative_frequencies_of_letters_in_the_English_language
 var (
 	engRuneFreqs = map[rune]float64{
 		'e': 0.12702,
@@ -24,6 +25,19 @@ var (
 		'm': 0.02406,
 	}
 )
+
+func xorRunesAgainstRune(rs []rune, r rune) []rune {
+	for i, r0 := range rs {
+		rs[i] = r0 ^ r
+	}
+	return rs
+}
+
+func XorStringAgainstRune(s string, r rune) string {
+	rs := []rune(s)
+	ret := xorRunesAgainstRune(rs, r)
+	return string(ret)
+}
 
 func EnglishScore(s string) float64 {
 	freq := make(map[rune]float64, len(engRuneFreqs))
@@ -53,5 +67,5 @@ func EnglishScore(s string) float64 {
 		score += diff * diff
 	}
 
-	return 1.0 - math.Sqrt(score)/float64(len(engRuneFreqs))
+	return 1.0 - math.Sqrt(score)/float64(len(freq))
 }

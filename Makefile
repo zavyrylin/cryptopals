@@ -1,13 +1,8 @@
-.PHONY = clean fmt help
-
-main:
-	go build main.go
+.PHONY = test fmt
+.DEFAULT_GOAL := test
 
 test:
 	go test -covermode=count ./...
 
 fmt:
 	find . -name "*.go" -exec gofmt -s -w {} \;
-
-clean:
-	rm -f main

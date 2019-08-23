@@ -62,6 +62,9 @@ var (
 	// Value is taken from https://www.itl.nist.gov/div898/handbook/eda/section3/eda3674.htm#LOWERCV
 	// for 26 degrees of freedom and significance value of 0.001
 	lowerTailCriticalValue0001 = 9.222
+
+	// Minimum difference between two 'distinctive' floats.
+	epsilon = 1e-9
 )
 
 func xorRunesAgainstRune(rs []rune, r rune) []rune {
@@ -112,10 +115,17 @@ func EnglishScore(s string) float64 {
 	return score
 }
 
-func xorBytesAgainstByte(bs []byte, b byte) {
+func xorBytesAgainstByte(bs []byte, b byte) []byte {
+	ret := make([]byte, len(bs))
 	for i, b0 := range bs {
-		bs[i] = b0 ^ b
+		ret[i] = b0 ^ b
 	}
+	return ret
+}
+
+// smaller tells whether a less than b and their difference is significant.
+func smaller(a, b float64) bool {
+	return a < b && (b-a) > epsilon
 }
 
 func TryDecryptXored(s string) (string, error) {
@@ -129,17 +139,20 @@ func TryDecryptXored(s string) (string, error) {
 	min := math.Inf(1.0)
 	for i := 0; i <= 255; i++ {
 		b := byte(i)
-		xorBytesAgainstByte(bs, b)
-		score := EnglishScore(string(bs))
-		// xor again since we modified bytes in the first pass
-		xorBytesAgainstByte(bs, b)
-		if score < min && score > lowerTailCriticalValue0001 {
+		xored := xorBytesAgainstByte(bs, b)
+		score := EnglishScore(string(xored))
+
+		if smaller(score, lowerTailCriticalValue0001) {
+			continue
+		}
+
+		if smaller(score, min) {
 			min = score
 			found = b
 		}
 	}
 
-	xorBytesAgainstByte(bs, found)
-	result := string(bs)
+	ret := xorBytesAgainstByte(bs, found)
+	result := string(ret)
 	return result, nil
 }

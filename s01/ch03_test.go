@@ -47,7 +47,7 @@ func TestTryDecryptXored(t *testing.T) {
 				return
 			}
 			if got != tt.want {
-				t.Errorf("TryDecryptXored() = %v, want %v", got, tt.want)
+				t.Errorf("TryDecryptXored() = %q, want %q", got, tt.want)
 			}
 		})
 	}

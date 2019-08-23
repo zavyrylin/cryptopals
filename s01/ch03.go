@@ -20,6 +20,7 @@ package s01
 // It that's simple ;)
 
 import (
+	"cryptopals/aux"
 	"math"
 	"unicode"
 )
@@ -55,6 +56,12 @@ var (
 		'q': 0.00095,
 		'z': 0.00074,
 	}
+
+	// Chi square statistics' value less than that tells us the null hypothesis
+	// should be rejected. So if EnglishScore(x) < criticalValue, than x is not English text.
+	// Value is taken from https://www.itl.nist.gov/div898/handbook/eda/section3/eda3674.htm#LOWERCV
+	// for 26 degrees of freedom and significance value of 0.001
+	lowerTailCriticalValue0001 = 9.222
 )
 
 func xorRunesAgainstRune(rs []rune, r rune) []rune {
@@ -103,4 +110,36 @@ func EnglishScore(s string) float64 {
 		score += math.Pow(observed-expected, 2) / expected
 	}
 	return score
+}
+
+func xorBytesAgainstByte(bs []byte, b byte) {
+	for i, b0 := range bs {
+		bs[i] = b0 ^ b
+	}
+}
+
+func TryDecryptXored(s string) (string, error) {
+	var bs []byte
+	var err error
+	if bs, err = aux.HexDecodeBytes([]byte(s)); err != nil {
+		return "", err
+	}
+
+	var found byte
+	min := math.Inf(1.0)
+	for i := 0; i <= 255; i++ {
+		b := byte(i)
+		xorBytesAgainstByte(bs, b)
+		score := EnglishScore(string(bs))
+		// xor again since we modified bytes in the first pass
+		xorBytesAgainstByte(bs, b)
+		if score < min && score > lowerTailCriticalValue0001 {
+			min = score
+			found = b
+		}
+	}
+
+	xorBytesAgainstByte(bs, found)
+	result := string(bs)
+	return result, nil
 }

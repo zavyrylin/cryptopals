@@ -2,7 +2,7 @@
 .DEFAULT_GOAL := test
 
 test:
-	go test -covermode=count ./...
+	go test -v -count=1 -covermode=count ./...
 
 fmt:
 	find . -name "*.go" -exec gofmt -s -w {} \;

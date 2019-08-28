@@ -8,11 +8,12 @@ package s01
 //
 // It feels natural to exploit letter frequencies in our 'Englishness' analysis. To be scientific
 // to some extent but not too much ;) we can assume that frequencies of different letters are
-// completely independent of each other, therefore we got 26 independent standard normal random
-// variables. We will use any of statistical tests for that.
+// completely independent of each other, therefore we kind of got 27 (26+1 for space character) independent
+// standard normal random variables. We can use any of existing statistical tests for that.
 //
 // Here we use chi-squared test (https://en.wikipedia.org/wiki/Chi-squared_test) for analysis.
-// Our null hypothesis will be the following: a given text is not an English text.
+// Our null hypothesis will be the following: there is no distinction between a calculated character frequency
+// and theoretical letter frequency in English text.
 // Chi-square statistics is constructed through sum of squared errors. An error for each letter
 // is a difference between observed count this letter appears in the text and 'theoretical' count
 // this letter expected to appear.
@@ -22,49 +23,43 @@ package s01
 import (
 	"cryptopals/aux"
 	"math"
+	"strings"
 	"unicode"
+	"unicode/utf8"
 )
 
 var (
 	// Frequency values are taken from
-	// https://en.wikipedia.org/wiki/Letter_frequency#Relative_frequencies_of_letters_in_the_English_language
+	// https://web.archive.org/web/20170918020907/http://www.data-compression.com/english.html
 	engRuneFreqs = map[rune]float64{
-		'e': 0.12702,
-		't': 0.09056,
-		'a': 0.08167,
-		'o': 0.07507,
-		'i': 0.06966,
-		'n': 0.06749,
-		's': 0.06327,
-		'h': 0.06094,
-		'r': 0.05987,
-		'd': 0.04253,
-		'l': 0.04025,
-		'c': 0.02782,
-		'u': 0.02758,
-		'm': 0.02406,
-		'w': 0.02360,
-		'f': 0.02228,
-		'g': 0.02015,
-		'y': 0.01974,
-		'p': 0.01929,
-		'b': 0.01492,
-		'v': 0.00978,
-		'k': 0.00772,
-		'j': 0.00153,
-		'x': 0.00150,
-		'q': 0.00095,
-		'z': 0.00074,
+		'a': 0.0651738,
+		'b': 0.0124248,
+		'c': 0.0217339,
+		'd': 0.0349835,
+		'e': 0.1041442,
+		'f': 0.0197881,
+		'g': 0.0158610,
+		'h': 0.0492888,
+		'i': 0.0558094,
+		'j': 0.0009033,
+		'k': 0.0050529,
+		'l': 0.0331490,
+		'm': 0.0202124,
+		'n': 0.0564513,
+		'o': 0.0596302,
+		'p': 0.0137645,
+		'q': 0.0008606,
+		'r': 0.0497563,
+		's': 0.0515760,
+		't': 0.0729357,
+		'u': 0.0225134,
+		'v': 0.0082903,
+		'w': 0.0171272,
+		'x': 0.0013692,
+		'y': 0.0145984,
+		'z': 0.0007836,
+		' ': 0.1918182,
 	}
-
-	// Chi square statistics' value less than that tells us the null hypothesis
-	// should be rejected. So if EnglishScore(x) < criticalValue, than x is not English text.
-	// Value is taken from https://www.itl.nist.gov/div898/handbook/eda/section3/eda3674.htm#LOWERCV
-	// for 26 degrees of freedom and significance value of 0.001
-	lowerTailCriticalValue0001 = 9.222
-
-	// Minimum difference between two 'distinctive' floats.
-	epsilon = 1e-9
 )
 
 func xorRunesAgainstRune(rs []rune, r rune) []rune {
@@ -82,37 +77,59 @@ func XorStringAgainstRune(s string, r rune) string {
 	return string(ret)
 }
 
-// EnglishScore calculates a chi-square (score) statistics of a given text.
+func frequencyAnalysis(s string) map[rune]float64 {
+	fa := make(map[rune]float64, len(engRuneFreqs)+1)
+	s0 := strings.ToLower(s)
+	for _, r := range s0 {
+		if engRuneFreqs[r] > 0 {
+			fa[r] += 1.0
+		} else {
+			fa[unicode.MaxRune] += 1.0
+		}
+		// cnt := fa[r]
+		// if cnt > 0 {
+		// 	fa[r] = cnt + 1.0
+		// } else {
+		// 	fa[r] = 1.0
+		// }
+	}
+	return fa
+}
+
+func chiSquare(fa map[rune]float64, len float64) float64 {
+	cs := 0.0
+	for r, observed := range fa {
+		expected := engRuneFreqs[r]
+		if expected > 0 {
+			expected *= len
+		} else {
+			// A slight customization of Chi-Square.
+			// If expected count is zero, the statistic will be +Inf which is useless.
+			// Furthermore, if we leave out all non-English letters for calculation, we may get
+			// surprisingly low chi-square statistic for gibberish strings -- even lower,
+			// than usual English text might give.
+			// By assigning insignificantly small value to expected count for all non-letter runes
+			// we get noticeably higher values of chi-square for non-text strings or for mixed strings
+			// consist of letter-like symbols and other bytes.
+			// This value should not be too small, otherwise even punctuation runes will give the value
+			// indistinguishable from that of what string of random bytes gives.
+			expected = 0.01
+		}
+		cs += math.Pow(observed-expected, 2) / expected
+	}
+	return cs
+}
+
+// EnglishScore calculates a chi-square statistic for a given text.
+// The lower the result the more probable that s is in English.
 func EnglishScore(s string) float64 {
-	counts := make(map[rune]float64, len(engRuneFreqs))
-	var l float64
-
-	// Count english letters in s.
-	for _, r0 := range s {
-		if !unicode.IsLetter(r0) {
-			continue
-		}
-		l++
-		r := unicode.ToLower(r0)
-		f := engRuneFreqs[r]
-		if f > 0 {
-			counts[r] += 1.0
-		}
+	fa := frequencyAnalysis(s)
+	if len(fa) == 0 {
+		return math.MaxFloat64
 	}
-
-	// The score for a text that contains no letters.
-	if l == 0.0 {
-		return math.Inf(1.0)
-	}
-
-	// Calculate chi square statistics of a given string.
-	score := 0.0
-	for k, e := range engRuneFreqs {
-		observed := counts[k]
-		expected := l * e
-		score += math.Pow(observed-expected, 2) / expected
-	}
-	return score
+	l := float64(utf8.RuneCountInString(s))
+	chi := chiSquare(fa, l)
+	return chi
 }
 
 func xorBytesAgainstByte(bs []byte, b byte) []byte {
@@ -123,36 +140,32 @@ func xorBytesAgainstByte(bs []byte, b byte) []byte {
 	return ret
 }
 
-// smaller tells whether a less than b and their difference is significant.
-func smaller(a, b float64) bool {
-	return a < b && (b-a) > epsilon
+type DecryptResult = struct {
+	Score     float64
+	Decrypted string
 }
 
-func TryDecryptXored(s string) (string, error) {
+func DecryptXored(s string) (*DecryptResult, error) {
 	var bs []byte
 	var err error
 	if bs, err = aux.HexDecodeBytes([]byte(s)); err != nil {
-		return "", err
+		return nil, err
 	}
 
 	var found byte
-	min := math.Inf(1.0)
+	min := math.MaxFloat64
 	for i := 0; i <= 255; i++ {
 		b := byte(i)
 		xored := xorBytesAgainstByte(bs, b)
 		score := EnglishScore(string(xored))
 
-		if smaller(score, lowerTailCriticalValue0001) {
-			continue
-		}
-
-		if smaller(score, min) {
+		if score < min {
 			min = score
 			found = b
 		}
 	}
-
-	ret := xorBytesAgainstByte(bs, found)
-	result := string(ret)
-	return result, nil
+	src := xorBytesAgainstByte(bs, found)
+	decrypted := string(src)
+	ret := DecryptResult{Score: min, Decrypted: decrypted}
+	return &ret, nil
 }
